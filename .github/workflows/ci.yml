@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: 
+  #     - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+  
+    steps:
+      # - name: Setup mill
+      #   uses: zhutmost/setup-mill@main
+      #   with:
+      #     mill-version: 0.11.2
+      # - run: mill --version
+
+      - name: Manual install mill
+        run: |
+          curl -L https://github.com/com-lihaoyi/mill/releases/download/0.11.2/0.11.2 > mill
+          chmod +x mill
+          sudo mv mill /usr/local/bin
+      - run: |
+          mill --version
+          which mill
+
+      - name: Install espresso
+        run: |
+          # wget https://github.com/chipsalliance/espresso/releases/download/v2.4/x86_64-linux-gnu-espresso -o espresso
+          # chmod +x espresso
+          git clone https://github.com/chipsalliance/espresso.git
+          cd espresso
+          mkdir build
+          cd build
+          cmake .. -DBUILD_DOC=off
+          make
+          sudo mv espresso /usr/local/bin
+          which espresso
+
+      - name: swapfile
+        run: |
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Setup verilator
+        uses: veryl-lang/setup-verilator@v1
+        with:
+          version: 5.028
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: OpenXiangShan-Nanhu/LinkNan
+          ref: main
+
+      - run: xmake init
+      - run: xmake emu -N small -L small
+      - run: xmake emu-run -i microbench
+  
+

@@ -1,0 +1,17 @@
+name: CI2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: 
+      image: ubuntu:20.04
+      options: --user root
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y lsb-release
+      - run: lsb_release -a
+
+
