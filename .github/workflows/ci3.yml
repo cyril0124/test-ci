@@ -1,0 +1,73 @@
+name: CI3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04 ]
+        iverilog-tag: [ 's20250103', 'master' ]
+    steps:
+      - name: Manual install mill
+        run: |
+          curl -L https://github.com/com-lihaoyi/mill/releases/download/0.11.2/0.11.2 > mill
+          chmod +x mill
+          sudo mv mill /usr/local/bin
+
+      - name: Check mill
+        run: |
+          mill --version
+          which mill
+
+      # - name: Setup xmake
+      #   uses: xmake-io/github-action-setup-xmake@v1
+      #   with:
+      #     xmake-version: '2.9.9'
+      # - run: xmake --version
+
+      - name: Setup xmake
+        run: sudo apt-get install -y xmake
+      - run: xmake --version
+
+      - name: Setup iverilog
+        run: |
+          sudo apt-get install -y --no-install-recommends g++ gperf flex bison make autoconf
+          git clone https://github.com/steveicarus/iverilog.git
+          cd iverilog
+          git reset --hard ${{ matrix.iverilog-tag }}
+          bash ./autoconf.sh
+          bash ./configure
+          make -j $(nproc)
+          sudo make install
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: OpenXiangShan-Nanhu/NHL2
+          submodules: 'true'
+
+      - name: Install verilua
+        run: |
+          wget https://github.com/cyril0124/verilua_offline/releases/download/v1.0/verilua-${{ matrix.os }}.zip
+          unzip verilua-${{ matrix.os }}.zip -d verilua-${{ matrix.os }}
+      
+      - name: Check verilua
+        run: |
+          source verilua-${{ matrix.os }}/verilua.sh
+          echo $VERILUA_HOME
+          which dpi_exporter
+
+      - name: Build NHL2
+        run: |
+          source verilua-${{ matrix.os }}/verilua.sh
+
+          export SIM=iverilog
+          xmake run init
+          xmake build Slice
+          xmake build TestSlice
+          xmake run TestSlice
+
+

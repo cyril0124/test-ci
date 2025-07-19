@@ -39,20 +39,31 @@ jobs:
           sudo mv espresso /usr/local/bin
           which espresso
 
-      - name: swapfile
-        run: |
-          sudo fallocate -l 10G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+      # - name: swapfile
+      #   run: |
+      #     sudo fallocate -l 10G /swapfile
+      #     sudo chmod 600 /swapfile
+      #     sudo mkswap /swapfile
+      #     sudo swapon /swapfile
 
       - name: Setup xmake
         uses: xmake-io/github-action-setup-xmake@v1
 
-      - name: Setup verilator
-        uses: veryl-lang/setup-verilator@v1
-        with:
-          version: 5.028
+      # - name: Setup verilator
+      #   uses: veryl-lang/setup-verilator@v1
+      #   with:
+      #     version: 5.028
+
+      - name: Setup Verilator
+        run: |
+          sudo apt-get install -y --no-install-recommends help2man make g++ perl python3 autoconf flex bison libfl2 libfl-dev zlib1g zlib1g-dev
+          git clone https://github.com/verilator/verilator.git
+          cd verilator
+          git reset --hard v5.032
+          autoconf
+          ./configure
+          make -j $(nproc)
+          sudo make install
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,7 +72,11 @@ jobs:
           ref: main
 
       - run: xmake init
-      - run: xmake emu -N small -L small
+      - run: |
+          export JAVA_OPTS="-Xms4g -Xmx8g -XX:+UseG1GC"
+          export CFLAGS="-Wall"
+          export CXXFLAGS="-Wall"
+          xmake emu -N small -L small -C minimal --threads=4
       - run: xmake emu-run -i microbench
   
 
