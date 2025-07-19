@@ -1,0 +1,108 @@
+name: CI4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04 ]
+        iverilog-tag: [ 's20250103', 'master' ]
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libboost-all-dev
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-25.05
+      - run: nix profile install nixpkgs#xmake
+      - run: nix profile install nixpkgs#verilator
+      - run: nix profile install nixpkgs#conan
+
+      - name: Setup rust
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            override: true
+
+      - name: Setup iverilog
+        run: |
+          sudo apt-get install -y --no-install-recommends g++ gperf flex bison make autoconf
+          git clone https://github.com/steveicarus/iverilog.git
+          cd iverilog
+          git reset --hard ${{ matrix.iverilog-tag }}
+          bash ./autoconf.sh
+          bash ./configure
+          make -j $(nproc)
+          sudo make install
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: cyril0124/verilua
+          submodules: 'true'
+
+      - name: Build verilua
+        run: |
+          xmake install verilua
+
+      - name: Load env variables
+        run: |
+          ls -l
+          echo "VERILUA_HOME=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          export VERILUA_HOME=$GITHUB_WORKSPACE # Make this available to current shell
+          echo "VERILUA_HOME is: $VERILUA_HOME"
+          source ./activate_verilua.sh
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LUA_PATH=$LUA_PATH" >> $GITHUB_ENV
+          echo "LUA_CPATH=$LUA_CPATH" >> $GITHUB_ENV
+          echo "CONFIG_TCCDIR=$CONFIG_TCCDIR" >> $GITHUB_ENV
+          echo "PATH is: $PATH"
+          echo "LD_LIBRARY_PATH is: $LD_LIBRARY_PATH"
+          echo "LUA_PATH is: $LUA_PATH"
+          echo "LUA_CPATH is: $LUA_CPATH"
+          echo "CONFIG_TCCDIR is: $CONFIG_TCCDIR"
+      
+      - name: Test verilua (Basic test)
+        run: |
+          xmake run test
+
+      - name: Manual install mill
+        run: |
+          curl -L https://github.com/com-lihaoyi/mill/releases/download/0.11.2/0.11.2 > mill
+          chmod +x mill
+          sudo mv mill /usr/local/bin
+  
+      - name: Check mill
+        run: |
+          mill --version
+          which mill
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: OpenXiangShan-Nanhu/NHL2
+          submodules: 'true'
+
+      # - name: Install verilua
+      #   run: |
+      #     wget https://github.com/cyril0124/verilua_offline/releases/download/v1.0/verilua-${{ matrix.os }}.zip
+      #     unzip verilua-${{ matrix.os }}.zip -d verilua-${{ matrix.os }}
+
+      - name: Build NHL2
+        run: |
+          source verilua-${{ matrix.os }}/verilua.sh
+
+          export SIM=iverilog
+          xmake run init
+          xmake build Slice
+          xmake build TestSlice
+          xmake run TestSlice
+
+
