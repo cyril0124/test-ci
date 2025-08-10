@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Test",
+        "unit": "ms",
+        "value": 100,
+        "extra": "type 1"
+    },
+    {
+        "name": "Test",
+        "unit": "ms",
+        "value": 200,
+        "extra": "type 2"
+    },
+    {
+        "name": "My Custom Smaller Is Better Benchmark - CPU Load",
+        "unit": "Percent",
+        "value": 50
+    },
+    {
+        "name": "My Custom Smaller Is Better Benchmark - Memory Used",
+        "unit": "Megabytes",
+        "value": 100,
+        "range": "3",
+        "extra": "Value for Tooltip: 25\nOptional Num #2: 100\nAnything Else!"
+    }
+]

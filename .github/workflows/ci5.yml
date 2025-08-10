@@ -1,46 +1,19 @@
 name: CI5
 
 on:
-  workflow_dispatch:
-    inputs:
-      benchmark-result:
-        required: true
-        type: string
-        default: |
-          [
-            {
-                "name": "My Custom Smaller Is Better Benchmark - CPU Load",
-                "unit": "Percent",
-                "value": 50
-            },
-            {
-                "name": "My Custom Smaller Is Better Benchmark - Memory Used",
-                "unit": "Megabytes",
-                "value": 100,
-                "range": "3",
-                "extra": "Value for Tooltip: 25\nOptional Num #2: 100\nAnything Else!"
-            }
-          ]
+  push:
+    branches:
+      - master
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      BENCHMARK_JSON: ${{ inputs.benchmark-result }}
 
     steps:
-      - name: Generate benchmark result
-        # run: |
-        #   echo -e "${{ inputs.benchmark-result }}" > output.json
-        #   realpath output.json
-        run: |
-          echo "$BENCHMARK_JSON" > output.json
-          echo "--- Verifying content of output.json ---"
-          cat output.json
-          echo "----------------------------------------"
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Generate a token to access cyril0124/test-ci-benchmark
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: generate_token
         uses: actions/create-github-app-token@v2
         with:
